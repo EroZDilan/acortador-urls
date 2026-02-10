@@ -18,10 +18,14 @@ export async function POST(request: NextRequest) {
     // Generar código corto único
     const urlCorta = nanoid(8);
 
-    // Generar código QR
-    const codigoQR = await QRCode.toDataURL(
-      `${process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000'}/${urlCorta}`
-    );
+    // Generar URL completa
+const urlCompleta = `${process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000'}/${urlCorta}`;
+
+// Generar código QR más pequeño
+const codigoQR = await QRCode.toDataURL(urlCompleta, {
+  width: 300,
+  margin: 1,
+});
 
     // Guardar en la base de datos
     const result = await pool.query(
