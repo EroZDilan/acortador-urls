@@ -5,6 +5,10 @@ import QRCode from 'qrcode';
 
 export async function POST(request: NextRequest) {
   try {
+    // Debug: Ver qué variables tenemos
+    console.log('DATABASE_URL existe:', !!process.env.DATABASE_URL);
+    console.log('NEXT_PUBLIC_BASE_URL:', process.env.NEXT_PUBLIC_BASE_URL);
+    
     const { url } = await request.json();
 
     // Validar que la URL sea válida
@@ -19,13 +23,16 @@ export async function POST(request: NextRequest) {
     const urlCorta = nanoid(8);
 
     // Generar URL completa
-const urlCompleta = `${process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000'}/${urlCorta}`;
+    const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000';
+    const urlCompleta = `${baseUrl}/${urlCorta}`;
 
-// Generar código QR más pequeño
-const codigoQR = await QRCode.toDataURL(urlCompleta, {
-  width: 300,
-  margin: 1,
-});
+    // Generar código QR
+    const codigoQR = await QRCode.toDataURL(urlCompleta, {
+      width: 300,
+      margin: 1,
+    });
+
+    console.log('Intentando conectar a base de datos...');
 
     // Guardar en la base de datos
     const result = await pool.query(
@@ -33,14 +40,17 @@ const codigoQR = await QRCode.toDataURL(urlCompleta, {
       [url, urlCorta, codigoQR]
     );
 
+    console.log('Guardado exitosamente');
+
     return NextResponse.json({
       success: true,
       data: result.rows[0],
     });
   } catch (error) {
+    console.error('Error completo:', error);
     console.error('Error al acortar URL:', error);
     return NextResponse.json(
-      { error: 'Error al procesar la solicitud' },
+      { error: 'Error al procesar la solicitud', details: error instanceof Error ? error.message : 'Unknown error' },
       { status: 500 }
     );
   }
