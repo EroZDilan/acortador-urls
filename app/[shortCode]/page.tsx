@@ -1,14 +1,21 @@
-import { redirect } from 'next/navigation';
+import { redirect, notFound } from 'next/navigation';
 import pool from '@/lib/db';
 
-interface PageProps {
-  params: Promise<{
-    shortCode: string;
-  }>;
-}
+export default async function RedirectPage({ 
+  params 
+}: { 
+  params: Promise<{ shortCode: string }> 
+}) {
+  const resolvedParams = await params;
+  const shortCode = resolvedParams.shortCode;
 
-export default async function RedirectPage({ params }: PageProps) {
-  const { shortCode } = await params;
+  console.log('ShortCode recibido:', shortCode);
+
+  if (!shortCode) {
+    notFound();
+  }
+
+  let urlOriginal: string | null = null;
 
   try {
     const result = await pool.query(
@@ -16,20 +23,28 @@ export default async function RedirectPage({ params }: PageProps) {
       [shortCode]
     );
 
+    console.log('Resultado DB:', result.rows);
+
     if (result.rows.length === 0) {
-      redirect('/');
+      console.log('URL no encontrada en DB');
+      notFound();
     }
 
-    const urlOriginal = result.rows[0].url_original;
+    urlOriginal = result.rows[0].url_original;
 
     await pool.query(
       'UPDATE urls SET visitas = visitas + 1 WHERE url_corta = $1',
       [shortCode]
     );
 
-    redirect(urlOriginal);
   } catch (error) {
     console.error('Error en redirección:', error);
-    redirect('/');
+    notFound();
   }
+
+  if (!urlOriginal) {
+    notFound();
+  }
+
+  redirect(urlOriginal);
 }
